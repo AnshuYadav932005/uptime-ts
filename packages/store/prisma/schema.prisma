@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model user {
+    id          String    @id @default(uuid())
+    username    String    @unique
+    password    String
+    webhook_url String?
+    websites    website[]
+}
+
+model website {
+    id         String         @id @default(uuid())
+    url        String
+    user_id    String
+    time_added DateTime
+    component  String?
+    ticks      website_tick[]
+    incidents  incident[]
+    maintenances maintenance[]
+    user       user           @relation(fields: [user_id], references: [id])
+}
+
+model maintenance {
+    id          String         @id @default(uuid())
+    website_id  String
+    title       String
+    description String
+    starts_at   DateTime
+    ends_at     DateTime?
+    status      maintenance_status @default(scheduled)
+    created_at  DateTime       @default(now())
+    website     website        @relation(fields: [website_id], references: [id])
+}
+
+model incident {
+    id         String    @id @default(uuid())
+    website_id String
+    region_id  String
+    started_at DateTime  @default(now())
+    ended_at   DateTime?
+    website    website   @relation(fields: [website_id], references: [id])
+}
+
+model region {
+    id     String         @id @default(uuid())
+    name   String
+    tickes website_tick[]
+}
+
+model website_tick {
+    id               String         @id @default(uuid())
+    response_time_ms Int
+    status           website_status
+    http_status      Int?
+    created_at       DateTime       @default(now())
+    region           region         @relation(fields: [region_id], references: [id])
+    website          website        @relation(fields: [website_id], references: [id])
+    region_id        String
+    website_id       String
+
+    @@index([website_id, created_at])
+    @@index([website_id, region_id, created_at])
+}
+
+enum website_status {
+    Up
+    Down
+    Unknown
+}
+
+enum maintenance_status {
+    scheduled
+    in_progress
+    completed
+}
